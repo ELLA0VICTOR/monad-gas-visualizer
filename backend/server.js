@@ -1,86 +1,25 @@
-import { useState } from "react";
-import Navbar from "./components/Navbar";
-import EditorPanel from "./components/EditorPanel";
-import ResultsPanel from "./components/ResultsPanel";
-import SplashScreen from "./components/SplashScreen";
-import { motion } from "framer-motion";
-import axios from "axios";
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import gasRoutes from "./routes/gasRoutes.js";
 
-// ✅ Use environment variable
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+dotenv.config();
 
-export default function App() {
-  const [code, setCode] = useState("// Write your Solidity code here");
-  const [compareEthereum, setCompareEthereum] = useState(false);
-  const [showUI, setShowUI] = useState(false);
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-  const analyzeGas = async () => {
-    setLoading(true);
-    try {
-      // Compile and estimate for Monad
-      const monadRes = await axios.post(`${API_BASE}/api/compile-and-estimate`, {
-        sourceCode: code,
-        chain: "monad",
-      });
+app.use(cors());
+app.use(express.json());
 
-      let results = [
-        {
-          name: "Monad",
-          gas: Number(monadRes.data.gasUsed),
-          metrics: monadRes.data.metrics,
-        }
-      ];
 
-      // Ethereum comparison
-      if (compareEthereum) {
-        const ethRes = await axios.post(`${API_BASE}/api/compile-and-estimate`, {
-          sourceCode: code,
-          chain: "ethereum",
-        });
-        results.push({
-          name: "Ethereum",
-          gas: Number(ethRes.data.gasUsed),
-          metrics: ethRes.data.metrics,
-        });
-      }
+app.use("/api", gasRoutes);
 
-      setData(results);
-    } catch (error) {
-      console.error("Error compiling or estimating gas:", error.response?.data || error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  return (
-    <>
-      <SplashScreen onFinish={() => setShowUI(true)} />
-      {showUI && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          className="min-h-screen bg-gray-950 text-white flex flex-col"
-        >
-          <Navbar />
-          <div className="flex flex-1">
-            <EditorPanel
-              code={code}
-              setCode={setCode}
-              onEstimateGas={analyzeGas}
-              loading={loading}
-            />
-            <ResultsPanel
-              data={data}
-              loading={loading}
-              compareEthereum={compareEthereum}
-              setCompareEthereum={setCompareEthereum}
-            />
-          </div>
-        </motion.div>
-      )}
-    </>
-  );
-}
+app.get("/", (req, res) => {
+  res.send("✅ Monad Gas Estimator Backend is running!");
+});
+
+
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on port ${PORT}`);
+});
